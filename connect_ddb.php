@@ -3,7 +3,10 @@
 $host = 'localhost'; 
 $db   = 'bienvenueformation';
 $user = 'root';
-$pass = 'Uncharted37';
+$pass = '';
+// $pass = 'Uncharted37';
+
+
 $charset = 'utf8mb4'; 
 $dsn = "mysql:host=$host;dbname=$db";
 $options = [
