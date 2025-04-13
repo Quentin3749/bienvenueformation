@@ -2,8 +2,8 @@
 // Connexion à la base de données
 $host = 'localhost'; 
 $db   = 'bienvenueformation';
-$user = 'quentin';
-$pass = 'Uncharted37!';
+$user = 'root';
+$pass = '';
 $charset = 'utf8mb4'; 
 $dsn = "mysql:host=$host;dbname=$db";
 $options = [

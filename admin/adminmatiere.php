@@ -88,7 +88,7 @@ $matieres = $matiereManager->getAllMatieres();
                         <tr>
                             <td><?= htmlspecialchars($matiere['id']) ?></td>
                             <td><?= htmlspecialchars($matiere['Name']) ?></td>
-                            <td><a href="modifyUser.php?id=<?= $matiere['id'] ?>"> <img src="image/mod.png" alt="Modifier"></a></td>
+                            <td><a href="modifier_matiere.php?id=<?= $matiere['id'] ?>"> <img src="image/mod.png" alt="Modifier"></a></td>
                             <td><a href="supprimermatiere.php?delete_id=<?= $matiere['id'] ?>"> <img src="image/sup.png" alt="Supprimer"></a></td>
                         </tr>
                     <?php endforeach; ?>

@@ -260,8 +260,8 @@ class UserView {
                     </td>
                     <td class="image">
                         <a href="modifyUser.php?id=' . htmlspecialchars($row['IdUsers']) . '">
-                            <img src="image/mod.png" alt="modifier">
-                        </a>
+                             <img src="image/mod.png" alt="modifier">
+                         </a>
                     </td>
                     <td class="image">
                         <a href="supprimerUser.php?id=' . htmlspecialchars($row['IdUsers']) . '">

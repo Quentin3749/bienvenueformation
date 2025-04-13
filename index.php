@@ -70,6 +70,10 @@ if (isset($_POST['ok'])) {
 </nav>
 <br/>
 
+<div class="container">
+    <h1 class="text-center mt-3 mb-4">Bienvenue Formation</h1>
+</div>
+
 <div class="d-flex justify-content-center align-items-center vh-90">
     <div class="form-box p-5 border shadow-lg rounded col-lg-4">
         <form action="" method="post">
