@@ -1,52 +1,72 @@
 <?php
-// Connexion à la base de données
+
+// On inclut le fichier pour se connecter à la base de données
 include_once "connect_ddb.php";
 
-// Démarrer une session
+// On démarre la session pour se souvenir de qui est connecté
 session_start();
 
-if (isset($_POST['ok'])) {
-    $email = trim($_POST['mail']);  // Récupérer l'email depuis le formulaire et sécuriser les entrées
-    $password = $_POST['password'];  // Récupérer le mot de passe depuis le formulaire
+class Authentification {
+    private $pdo; // On garde l'outil de connexion à la base de données dans notre boîte
 
-    // Requête SQL sécurisée avec des paramètres préparés
-    $sql = "SELECT * FROM users WHERE mail = :email";  // Utilisation de "mail" comme dans la BDD
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute(['email' => $email]);
+    public function __construct($pdo) {
+        $this->pdo = $pdo; // Quand on crée une boîte Authentification, on lui donne l'outil pour la base de données
+    }
 
-    // Vérification si l'utilisateur existe
-    if ($stmt->rowCount() > 0) {
-        $data = $stmt->fetch(); // Récupérer les données utilisateur
+    public function connecterUtilisateur($email, $password) {
+        // On nettoie l'email pour éviter les soucis
+        $email = trim($email);
 
-        // Vérification du mot de passe haché
-        if (password_verify($password, $data['mp'])) {
-            $_SESSION['email'] = $email;  // Stocker l'email dans la session
-            $_SESSION['role'] = $data['role']; // Stocker le rôle dans la session
-            $_SESSION['prenom'] = $data['prenom']; // Stocker le prénom dans la session
+        // On prépare la requête pour aller chercher l'utilisateur dans la base de données
+        $sql = "SELECT * FROM users WHERE mail = :email";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['email' => $email]);
 
-            // Redirection en fonction du rôle
-            switch ($data['role']) {
-                case 'admin':
-                    header('Location: admin/admin.php');
-                    break;
-                case 'enseignant':
-                    header('Location: prof.php');
-                    break;
-                case 'etudiant':
-                    header('Location: eleve.php');
-                    break;
-                default:
-                    echo "Rôle inconnu.";
-                    exit();
+        // On regarde si on a trouvé un utilisateur avec cet email
+        if ($stmt->rowCount() > 0) {
+            $data = $stmt->fetch(); // On récupère les informations de l'utilisateur
+
+            // On vérifie si le mot de passe donné correspond au mot de passe enregistré (qui est caché)
+            if (password_verify($password, $data['mp'])) {
+                // Si tout est bon, on se souvient de l'utilisateur en stockant des infos dans la session
+                $_SESSION['email'] = $email;
+                $_SESSION['role'] = $data['role'];
+                $_SESSION['prenom'] = $data['prenom'];
+
+                // On dit où aller en fonction du rôle de l'utilisateur
+                switch ($data['role']) {
+                    case 'admin':
+                        header('Location: admin/admin.php');
+                        break;
+                    case 'enseignant':
+                        header('Location: prof.php');
+                        break;
+                    case 'etudiant':
+                        header('Location: eleve.php');
+                        break;
+                    default:
+                        echo "Rôle inconnu.";
+                        exit();
+                }
+                exit();
+            } else {
+                return "Mot de passe incorrect."; // On renvoie un message d'erreur
             }
-            exit();
         } else {
-            $error = "Mot de passe incorrect.";
+            return "Utilisateur non trouvé."; // On renvoie un autre message d'erreur
         }
-    } else {
-        $error = "Utilisateur non trouvé.";
     }
 }
+
+// On crée notre "boîte" d'Authentification en lui donnant l'outil pour la base de données ($pdo)
+$auth = new Authentification($pdo);
+
+// On regarde si le bouton "Se connecter" a été cliqué
+if (isset($_POST['ok'])) {
+    // On essaie de connecter l'utilisateur et on récupère le message (s'il y en a un)
+    $error = $auth->connecterUtilisateur($_POST['mail'], $_POST['password']);
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -61,7 +81,7 @@ if (isset($_POST['ok'])) {
 
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-dark-subtle">
-  <a class="navbar-brand" href="#"><img src="image.png" alt="logo"></a>
+  <a class="navbar-brand" href="#"><img src="image/logo.png" alt="logo"></a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>

@@ -2,72 +2,108 @@
 session_start();
 include_once "connect_ddb.php";
 
-// Fonction pour récupérer les données du professeur
-function getProfessorData($email, $pdo) {
-    $sql = "SELECT idUsers, prenom FROM users WHERE mail = :email AND role = 'enseignant'";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute(['email' => $email]);
-    return $stmt->fetch();
-}
+class ProfesseurPage {
+    private $pdo;
+    private $professeurData = null;
+    private $cours = [];
+    private $calendarEvents = [];
 
-// Fonction pour récupérer les cours du professeur pour le calendrier (format FullCalendar v3)
-function getProfessorCoursesForCalendar($prof_id, $pdo) {
-    $sql_courses = "
-        SELECT
-            m.Name AS title,
-            p.debut_du_cours AS start,
-            p.fin_du_cours AS end
-        FROM planning p
-        INNER JOIN matiere m ON p.matiere_id = m.Id
-        WHERE p.prof_id = :prof_id
-        ORDER BY p.debut_du_cours";
-
-    $stmt_courses = $pdo->prepare($sql_courses);
-    $stmt_courses->execute(['prof_id' => $prof_id]);
-    return $stmt_courses->fetchAll(PDO::FETCH_ASSOC);
-}
-
-// Fonction pour récupérer les cours du professeur (pour la liste)
-function getCourses($prof_id, $pdo) {
-    $sql_courses = "
-        SELECT
-            m.Name AS matiere,
-            c.Name AS classe,
-            c.Id AS classe_id,
-            p.Id AS planning_id,
-            p.debut_du_cours,
-            p.fin_du_cours
-        FROM planning p
-        INNER JOIN matiere m ON p.matiere_id = m.Id
-        INNER JOIN classe c ON p.classe_id = c.Id
-        WHERE p.prof_id = :prof_id
-        ORDER BY p.debut_du_cours";
-
-    $stmt_courses = $pdo->prepare($sql_courses);
-    $stmt_courses->execute(['prof_id' => $prof_id]);
-    return $stmt_courses->fetchAll();
-}
-
-// Vérification de l'authentification
-if (isset($_SESSION['email'])) {
-    $email = $_SESSION['email'];
-    $profData = getProfessorData($email, $pdo);
-
-    if ($profData) {
-        $prof_id = $profData['idUsers'];
-        $prenom = $profData['prenom'];
-        $courses = getCourses($prof_id, $pdo);
-        $calendarEvents = getProfessorCoursesForCalendar($prof_id, $pdo);
-    } else {
-        $prenom = "Utilisateur inconnu";
-        $courses = [];
-        $calendarEvents = [];
+    public function __construct($pdo) {
+        $this->pdo = $pdo;
+        $this->chargerInformationsProfesseur();
+        if ($this->professeurData) {
+            $this->chargerCours();
+            $this->chargerEvenementsCalendrier();
+        }
     }
-} else {
-    $prenom = "Utilisateur inconnu";
-    $courses = [];
-    $calendarEvents = [];
+
+    private function chargerInformationsProfesseur() {
+        if (isset($_SESSION['email'])) {
+            $email = $_SESSION['email'];
+            $sql = "SELECT idUsers, prenom FROM users WHERE mail = :email AND role = 'enseignant'";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute(['email' => $email]);
+            $this->professeurData = $stmt->fetch();
+        }
+    }
+
+    private function chargerCours() {
+        if ($this->professeurData) {
+            $prof_id = $this->professeurData['idUsers'];
+            $sql_courses = "
+                SELECT
+                    m.Name AS matiere,
+                    c.Name AS classe,
+                    c.Id AS classe_id,
+                    p.Id AS planning_id,
+                    p.debut_du_cours,
+                    p.fin_du_cours
+                FROM planning p
+                INNER JOIN matiere m ON p.matiere_id = m.Id
+                INNER JOIN classe c ON p.classe_id = c.Id
+                WHERE p.prof_id = :prof_id
+                ORDER BY p.debut_du_cours";
+            $stmt_courses = $this->pdo->prepare($sql_courses);
+            $stmt_courses->execute(['prof_id' => $prof_id]);
+            $this->cours = $stmt_courses->fetchAll();
+        }
+    }
+
+    private function chargerEvenementsCalendrier() {
+        if ($this->professeurData) {
+            $prof_id = $this->professeurData['idUsers'];
+            $sql_calendar = "
+                SELECT
+                    m.Name AS title,
+                    p.debut_du_cours AS start,
+                    p.fin_du_cours AS end
+                FROM planning p
+                INNER JOIN matiere m ON p.matiere_id = m.Id
+                WHERE p.prof_id = :prof_id
+                ORDER BY p.debut_du_cours";
+            $stmt_calendar = $this->pdo->prepare($sql_calendar);
+            $stmt_calendar->execute(['prof_id' => $prof_id]);
+            $this->calendarEvents = $stmt_calendar->fetchAll(PDO::FETCH_ASSOC);
+        }
+    }
+
+    public function getPrenomProfesseur() {
+        return $this->professeurData ? htmlspecialchars($this->professeurData['prenom']) : "Utilisateur inconnu";
+    }
+
+    public function getCoursProfesseur() {
+        return $this->cours;
+    }
+
+    public function getEvenementsCalendrierProfesseur() {
+        return json_encode($this->calendarEvents);
+    }
+
+    public function afficherMessagesSession() {
+        if (isset($_SESSION['message'])) {
+            echo '<div class="alert alert-success alert-dismissible fade show" role="alert">';
+            echo htmlspecialchars($_SESSION['message']);
+            echo '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+            echo '</div>';
+            unset($_SESSION['message']);
+        }
+        if (isset($_SESSION['error'])) {
+            echo '<div class="alert alert-danger alert-dismissible fade show" role="alert">';
+            echo htmlspecialchars($_SESSION['error']);
+            echo '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+            echo '</div>';
+            unset($_SESSION['error']);
+        }
+    }
 }
+
+// Création de l'objet ProfesseurPage
+$pageProfesseur = new ProfesseurPage($pdo);
+
+// Récupération des données via l'objet
+$prenom = $pageProfesseur->getPrenomProfesseur();
+$courses = $pageProfesseur->getCoursProfesseur();
+$calendarEventsJSON = $pageProfesseur->getEvenementsCalendrierProfesseur();
 ?>
 
 <!DOCTYPE html>
@@ -103,7 +139,7 @@ if (isset($_SESSION['email'])) {
     <nav class="navbar navbar-expand-lg navbar-light bg-dark-subtle">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">
-                <i class="bi bi-calendar-check"></i> Gestion des présences
+                <i class="bi bi-calendar-check"></i> espace enseignant
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
                 <span class="navbar-toggler-icon"></span>
@@ -113,7 +149,7 @@ if (isset($_SESSION['email'])) {
                     <?php if ($prenom !== "Utilisateur inconnu"): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="#">
-                                <i class="bi bi-person-circle"></i> <?= htmlspecialchars($prenom) ?>
+                                <i class="bi bi-person-circle"></i> <?= $prenom ?>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -134,28 +170,12 @@ if (isset($_SESSION['email'])) {
     </nav>
 
     <div class="container mt-5">
-        <?php
-            if (isset($_SESSION['message'])) {
-                echo '<div class="alert alert-success alert-dismissible fade show" role="alert">';
-                echo htmlspecialchars($_SESSION['message']);
-                echo '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
-                echo '</div>';
-                unset($_SESSION['message']); // Supprimer le message après l'affichage
-            }
-
-            if (isset($_SESSION['error'])) {
-                echo '<div class="alert alert-danger alert-dismissible fade show" role="alert">';
-                echo htmlspecialchars($_SESSION['error']);
-                echo '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
-                echo '</div>';
-                unset($_SESSION['error']); // Supprimer l'erreur après l'affichage
-            }
-        ?>
+        <?php $pageProfesseur->afficherMessagesSession(); ?>
         <div class="row">
             <div class="col-12">
                 <h2>
                     <i class="bi bi-calendar3"></i>
-                    Cours de <?= htmlspecialchars($prenom) ?>
+                    Cours de <?= $prenom ?>
                 </h2>
 
                 <div id="calendar"></div>
@@ -214,7 +234,7 @@ if (isset($_SESSION['email'])) {
                                             $students = $stmt_students->fetchAll();
 
                                             if (!empty($students)): ?>
-                                                <form action="save_attendance.php" method="POST" class="attendance-form">
+                                                <form action="enregistrement_presence.php" method="POST" class="attendance-form">
                                                     <input type="hidden" name="classe_id" value="<?= htmlspecialchars($classe_id) ?>">
                                                     <input type="hidden" name="course_date" value="<?= htmlspecialchars($course['debut_du_cours']) ?>">
                                                     <input type="hidden" name="planning_id" value="<?= htmlspecialchars($course['planning_id']) ?>">
@@ -273,7 +293,7 @@ if (isset($_SESSION['email'])) {
                                             <?php else: ?>
                                                 <div class="alert alert-info">
                                                     <i class="bi bi-info-circle"></i>
-                                                    Aucun élève n'est inscrit dans cette classe.
+                                                    Aucun étudiant trouvé pour cette classe.
                                                 </div>
                                             <?php endif; ?>
                                         </td>
@@ -283,43 +303,27 @@ if (isset($_SESSION['email'])) {
                         </table>
                     </div>
                 <?php else: ?>
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i>
-                        Aucun cours disponible pour ce professeur.
-                    </div>
+                    <p class="alert alert-info"><i class="bi bi-info-circle"></i> Aucun cours n'est programmé pour le moment.</p>
                 <?php endif; ?>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/locale/fr.js"></script>
-
     <script>
         $(document).ready(function() {
             $('#calendar').fullCalendar({
                 locale: 'fr',
-                events: <?= json_encode($calendarEvents) ?>
+                events: <?= $calendarEventsJSON ?>
             });
-        });
 
-        document.querySelectorAll('.toggle-students').forEach(button => {
-            button.addEventListener('click', () => {
-                const index = button.getAttribute('data-index');
-                const row = document.getElementById(`students-${index}`);
-
-                // Toggle l'affichage
-                if (row.style.display === 'none' || row.style.display === '') {
-                    row.style.display = 'table-row';
-                    button.innerHTML = '<i class="bi bi-clipboard-x"></i> Masquer la liste';
-                    button.classList.replace('btn-primary', 'btn-secondary');
-                } else {
-                    row.style.display = 'none';
-                    button.innerHTML = '<i class="bi bi-clipboard-check"></i> Faire l\'appel';
-                    button.classList.replace('btn-secondary', 'btn-primary');
-                }
+            $('.toggle-students').click(function() {
+                var index = $(this).data('index');
+                $('#students-' + index).toggle();
             });
         });
     </script>
