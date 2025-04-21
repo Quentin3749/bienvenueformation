@@ -19,11 +19,14 @@
                 <a class="nav-link px-3 py-2" href="coursadmin.php">Cours</a>
             </li>
             <li class="nav-item border border-secondary rounded me-2 bg-white">
-                <a class="nav-link px-3 py-2 active" href="classeadmin.php">Classe</a>
+                <a class="nav-link px-3 py-2 " href="classeadmin.php">Classe</a>
             </li>
             <li class="nav-item border border-secondary rounded me-2 bg-white">
                 <a class="nav-link px-3 py-2" href="adminmatiere.php">Matière</a>
             </li>
+            <li class="nav-item">
+            <a class="nav-link" href="../logout.php">Déconnexion</a>
+</li>
         </ul>
     </div>
 </nav>

@@ -1,5 +1,18 @@
 <?php
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
 session_start();
+
+// Vérification de la session
+if (!isset($_SESSION['email'])) {
+    // La session n'existe plus, on redirige vers la page de connexion avec un message
+    $_SESSION['message_expiration'] = "Votre session a expiré. Veuillez vous reconnecter.";
+    header('Location: index.php'); // Assure-toi que "index.php" est le nom de ta page de connexion
+    exit();
+}
+
+
 include_once "connect_ddb.php";
 
 class ElevePage {
@@ -8,6 +21,7 @@ class ElevePage {
     private $userId = null;
     private $classeId = null;
     private $coursJsonAvecStatut = [];
+    private $errorMessage = null; // Pour stocker les messages d'erreur
 
     public function __construct($pdo) {
         $this->pdo = $pdo;
@@ -16,7 +30,7 @@ class ElevePage {
     }
 
     private function chargerInformationsEleve() {
-        if (isset($_SESSION['email'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['email'])) {
             $email = $_SESSION['email'];
             try {
                 $sqlEleve = "SELECT IdUsers, prenom, classe_id FROM users WHERE mail = :email AND role = 'etudiant'";
@@ -30,8 +44,8 @@ class ElevePage {
                     $this->classeId = $dataEleve['classe_id'];
                 }
             } catch (PDOException $e) {
-                $errorMessage = "Erreur lors de la récupération des informations.";
-                // Optionnel: log l'erreur
+                $this->errorMessage = "Une erreur est survenue lors de la récupération de vos informations.";
+                // Optionnel: journaliser l'erreur dans un fichier de log
             }
         }
     }
@@ -57,8 +71,8 @@ class ElevePage {
                 $stmtCoursCalendrierAvecStatut->execute(['classe_id' => $this->classeId, 'user_id' => $this->userId]);
                 $this->coursJsonAvecStatut = $stmtCoursCalendrierAvecStatut->fetchAll(PDO::FETCH_ASSOC);
             } catch (PDOException $e) {
-                $errorMessage = "Erreur lors de la récupération des cours.";
-                // Optionnel: log l'erreur
+                $this->errorMessage = "Une erreur est survenue lors du chargement de vos cours.";
+                // Optionnel: journaliser l'erreur dans un fichier de log
             }
         }
     }
@@ -81,12 +95,15 @@ class ElevePage {
 
     public function afficherMessageSession() {
         if (isset($_SESSION['message'])) {
-            echo $_SESSION['message'];
+            echo '<div class="alert alert-success">' . $_SESSION['message'] . '</div>';
             unset($_SESSION['message']);
         }
         if (isset($_SESSION['error'])) {
-            echo $_SESSION['error'];
+            echo '<div class="alert alert-danger">' . $_SESSION['error'] . '</div>';
             unset($_SESSION['error']);
+        }
+        if ($this->errorMessage !== null) {
+            echo '<div class="alert alert-danger">' . $this->errorMessage . '</div>';
         }
     }
 
@@ -96,7 +113,7 @@ class ElevePage {
             echo '<div id=\'calendar\'></div>';
             // ... (le reste du code pour le modal et la liste des cours) ...
         } else {
-            echo '<div class="alert alert-success">vous etes connecté</div>';
+            echo '<div class="alert alert-info">Vous êtes connecté. Les informations de votre profil et vos cours seront affichés ici.</div>';
         }
     }
 

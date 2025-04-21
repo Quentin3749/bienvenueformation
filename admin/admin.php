@@ -1,4 +1,16 @@
 <?php
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+session_start();
+
+
+if (!isset($_SESSION['email'])) {
+    // La session n'existe plus, on redirige vers la page de connexion avec un message
+    $_SESSION['message_expiration'] = "Votre session a expiré. Veuillez vous reconnecter.";
+    header('Location: index.php'); // Assure-toi que "index.php" est le nom de ta page de connexion
+    exit();
+}
 // Inclusion des fichiers 
 require_once "connect_ddb.php";
 require_once "fonctions/user_functions.php";
@@ -11,7 +23,7 @@ class UserManager {
     // Constructeur declancher automatiquement à chaque creation d'objet 
     public function __construct($pdo) {
         $this->pdo = $pdo;
-        session_start();
+        //FACCsession_start();
     }
     
     // recupere un message

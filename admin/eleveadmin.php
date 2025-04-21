@@ -1,4 +1,7 @@
 <?php
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
 // Inclusion des fichiers
 require_once "connect_ddb.php";
 require_once "fonctions/user_functions.php";

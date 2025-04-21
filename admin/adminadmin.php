@@ -1,4 +1,7 @@
 <?php
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
 // Inclure le fichier de connexion à la base de données
 include_once "connect_ddb.php";
 

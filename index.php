@@ -32,6 +32,7 @@ class Authentification {
                 $_SESSION['email'] = $email;
                 $_SESSION['role'] = $data['role'];
                 $_SESSION['prenom'] = $data['prenom'];
+                $_SESSION['connecte'] = true; // On ajoute une variable pour indiquer que l'utilisateur est connecté
 
                 // On dit où aller en fonction du rôle de l'utilisateur
                 switch ($data['role']) {
@@ -67,6 +68,12 @@ if (isset($_POST['ok'])) {
     $error = $auth->connecterUtilisateur($_POST['mail'], $_POST['password']);
 }
 
+// On vérifie si l'utilisateur était connecté et on supprime l'information de connexion
+if (isset($_SESSION['connecte']) && $_SESSION['connecte'] === true) {
+    unset($_SESSION['connecte']); // On supprime la variable de connexion
+    $message_expiration = "Connexion expirée. Veuillez vous reconnecter.";
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -81,12 +88,10 @@ if (isset($_POST['ok'])) {
 
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-dark-subtle">
-  <a class="navbar-brand" href="#"><img src="image/logo.png" alt="logo"></a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-
- 
+    <a class="navbar-brand" href="#"><img src="image/logo.png" alt="logo"></a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
 </nav>
 <br/>
 
@@ -97,29 +102,45 @@ if (isset($_POST['ok'])) {
 <div class="d-flex justify-content-center align-items-center vh-90">
     <div class="form-box p-5 border shadow-lg rounded col-lg-4">
         <form action="" method="post">
-        <h1 class="text-center">Connexion</h1>
+            <h1 class="text-center">Connexion</h1>
 
-        <?php if (isset($error)): ?>
-            <div class="alert alert-danger" role="alert">
-                <?php echo $error; ?>
+            <?php if (isset($message_expiration)): ?>
+                <div class="alert alert-warning" role="alert">
+                    <?php echo $message_expiration; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($error)): ?>
+                <div class="alert alert-danger" role="alert">
+                    <?php echo $error; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="mb-3">
+                <label for="inputEmail4" class="form-label">Email</label>
+                <input type="email" class="form-control" id="inputEmail4" name="mail" required>
             </div>
-        <?php endif; ?>
+            <div class="mb-3">
+                <label for="inputPassword4" class="form-label">Mot de passe</label>
+                <input type="password" class="form-control" id="inputPassword4" name="password" required>
+            </div>
 
-        <div class="mb-3">
-            <label for="inputEmail4" class="form-label">Email</label>
-            <input type="email" class="form-control" id="inputEmail4" name="mail" required>
-        </div>
-        <div class="mb-3">
-            <label for="inputPassword4" class="form-label">Mot de passe</label>
-            <input type="password" class="form-control" id="inputPassword4" name="password" required>
-        </div>
-
-        <div class="text-center">
-            <input type="submit" value="Se connecter" name="ok" class="btn btn-primary">
-        </div>
+            <div class="text-center">
+                <input type="submit" value="Se connecter" name="ok" class="btn btn-primary">
+            </div>
         </form>
     </div>
 </div>
+
+<script>
+    // Empêcher la mise en cache de la page pour forcer l'affichage du message
+    window.onload = function() {
+        if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {
+            // Si la page est chargée depuis l'historique (bouton retour), on recharge la page
+            window.location.reload();
+        }
+    };
+</script>
 
 </body>
 </html>
