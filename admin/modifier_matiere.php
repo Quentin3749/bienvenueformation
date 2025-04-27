@@ -57,7 +57,7 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) {
 
     if (!$matiere) {
         $message = "<p class='text-danger text-center'>Matière non trouvée.</p>";
-        // Vous pourriez rediriger ici vers la liste des matières
+
     }
 } elseif (empty($message) && $_SERVER['REQUEST_METHOD'] != 'POST') {
     $message = "<p class='text-danger text-center'>ID de matière invalide.</p>";
