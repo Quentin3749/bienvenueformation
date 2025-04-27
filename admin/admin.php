@@ -1,37 +1,32 @@
 <?php
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
+// Désactive le cache HTTP pour garantir l'actualisation des données
 header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
-session_start();
 
-
-if (!isset($_SESSION['email'])) {
-    // La session n'existe plus, on redirige vers la page de connexion avec un message
-    $_SESSION['message_expiration'] = "Votre session a expiré. Veuillez vous reconnecter.";
-    header('Location: index.php'); // Assure-toi que "index.php" est le nom de ta page de connexion
-    exit();
-}
-// Inclusion des fichiers 
-require_once "connect_ddb.php";
+// Inclusion des fichiers nécessaires (fonctions utilisateurs)
 require_once "fonctions/user_functions.php";
 
-// Classe principale pour la gestion des utilisateurs
+// Classe principale pour la gestion des utilisateurs (CRUD, rôles, classes, etc.)
 class UserManager {
     private $pdo;
     private $message = "";
     
-    // Constructeur declancher automatiquement à chaque creation d'objet 
+    // Constructeur appelé à chaque création d'objet UserManager
     public function __construct($pdo) {
         $this->pdo = $pdo;
-        //FACCsession_start();
     }
     
-    // recupere un message
+    // Récupère le message d'information ou d'erreur
     public function getMessage() {
         return $this->message;
     }
     
-    // Traitements des formulaires en appelant trois autres fonctions
+    // Traite les formulaires POST (rôle, classe, inscription)
     public function processRequests() {
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $this->processRoleChange();
@@ -40,16 +35,16 @@ class UserManager {
         }
     }
     
-    // Traiter le changement de rôle
+    // Traite le changement de rôle d'un utilisateur
     private function processRoleChange() {
         if (isset($_POST['id']) && isset($_POST['role'])) {
             $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
             $role = htmlspecialchars($_POST['role']);
             
-            // Définir les rôles valides et vérifier que le rôle est autorisé
+            // Rôles autorisés
             $validRoles = ['admin', 'enseignant', 'etudiant'];
             if (in_array($role, $validRoles)) {
-                // Préparer et exécuter la requête de mise à jour du rôle
+                // Met à jour le rôle dans la BDD
                 $sql = "UPDATE users SET role = :role WHERE IdUsers = :id";
                 $stmt = $this->pdo->prepare($sql);
 
@@ -64,7 +59,7 @@ class UserManager {
         }
     }
     
-    // Traiter le changement de classe
+    // Traite le changement de classe d'un utilisateur
     private function processClassChange() {
         if (isset($_POST['id']) && isset($_POST['classe_id'])) {
             $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
@@ -81,7 +76,7 @@ class UserManager {
         }
     }
     
-    // Traiter l'inscription
+    // Traite l'inscription d'un nouvel utilisateur
     private function processRegistration() {
         if (isset($_POST['ok'])) {
             $name = htmlspecialchars($_POST['name']);
@@ -90,17 +85,17 @@ class UserManager {
             $password = $_POST['password'];
             $confirmPassword = $_POST['confirmpassword'];
             
-            // Vérification si l'email existe déjà
+            // Vérifie si l'email existe déjà
             $checkEmail = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE mail = ?");
             $checkEmail->execute([$mail]);
             if ($checkEmail->fetchColumn() > 0) {
                 $this->message = "Cet email est déjà utilisé.";
             }
-            // Vérifier que les mots de passe correspondent okkkkkkkkkkkkkkkkk
+            // Vérifie que les mots de passe correspondent
             elseif ($password !== $confirmPassword) {
                 $this->message = "Les mots de passe ne correspondent pas.";
             }
-            // Vérifier la complexité du mot de passe 
+            // Vérifie la complexité du mot de passe
             elseif (strlen($password) < 8) {
                 $this->message = "Le mot de passe doit contenir au moins 8 caractères.";
             } else {
@@ -117,7 +112,7 @@ class UserManager {
         }
     }
     
-    // Récupérer tous les utilisateurs
+    // Récupère tous les utilisateurs avec leur classe (jointure)
     public function getAllUsers() {
         $sql = "
         SELECT users.IdUsers, users.Nom, users.prenom, users.mail, users.role, 
@@ -129,14 +124,14 @@ class UserManager {
         return $this->pdo->query($sql);
     }
     
-    // Récupérer toutes les classes
+    // Récupère toutes les classes disponibles
     public function getAllClasses() {
         $sql = "SELECT id, Name FROM classe ORDER BY Name";
         return $this->pdo->query($sql);
     }
 }
 
-// Classe pour le rendu HTML
+// Classe pour le rendu HTML de la page admin (header, navigation, messages, formulaires, tableau)
 class UserView {
     private $userManager;
     
@@ -144,7 +139,7 @@ class UserView {
         $this->userManager = $userManager;
     }
     
-    // Afficher la page complète
+    // Affiche la page complète
     public function render() {
         $this->renderHeader();
         $this->renderNavigation();
@@ -154,7 +149,7 @@ class UserView {
         $this->renderFooter();
     }
     
-    // Afficher l'en-tête HTML
+    // Affiche l'en-tête HTML
     private function renderHeader() {
         echo '<!DOCTYPE html>
         <html lang="fr">
@@ -168,12 +163,12 @@ class UserView {
         <body>';
     }
     
-    // Afficher la barre de navigation
+    // Affiche la barre de navigation
     private function renderNavigation() {
         include "barrenav.php";
     }
     
-    // Afficher les messages
+    // Affiche les messages d'info ou d'erreur
     private function renderMessage() {
         $message = $this->userManager->getMessage();
         if (!empty($message)) {
@@ -181,7 +176,7 @@ class UserView {
         }
     }
     
-    // Afficher le formulaire d'inscription
+    // Affiche le formulaire d'inscription
     private function renderRegistrationForm() {
         echo '<div class="d-flex justify-content-center align-items-center vh-90 my-4">
             <div class="form-box p-3 border shadow-lg rounded col-lg-3">
@@ -217,7 +212,7 @@ class UserView {
         </div>';
     }
     
-    // Afficher le tableau des utilisateurs
+    // Affiche le tableau des utilisateurs
     private function renderUsersTable() {
         $result = $this->userManager->getAllUsers();
         
@@ -291,31 +286,31 @@ class UserView {
         echo '</div>';
     }
     
-    // Afficher le pied de page
+    // Affiche le pied de page
     private function renderFooter() {
         echo '</body>
         </html>';
     }
 }
 
-// Création et exécution du contrôleur principal
+// Contrôleur principal pour orchestrer la gestion admin
 class AdminController {
     private $userManager;
     private $userView;
     
     public function __construct($pdo) {
         $this->userManager = new UserManager($pdo);
+        $this->userManager->processRequests();
         $this->userView = new UserView($this->userManager);
     }
     
-    // Exécuter le contrôleur
+    // Lance le rendu de la page admin
     public function run() {
-        $this->userManager->processRequests();
         $this->userView->render();
     }
 }
 
-// Point d'entrée de l'application
+// Point d'entrée de l'application admin
 $adminController = new AdminController($pdo);
 $adminController->run();
 ?>

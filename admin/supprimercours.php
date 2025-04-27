@@ -1,4 +1,8 @@
 <?php
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
 include_once "connect_ddb.php"; // Vérifiez que la connexion fonctionne correctement
 
 // Vérifiez si une demande de suppression a été envoyée
@@ -24,4 +28,3 @@ if (isset($_GET['delete_id'])) {
     exit();
 }
 ?>
-

@@ -1,46 +1,67 @@
 <?php
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
+// Désactive le cache HTTP pour garantir l'actualisation des données
 header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
-session_start();
+// Démarre la session pour vérifier l'authentification
+// session_start(); // Supprimé car déjà géré de façon centralisée
+// Inclusion de la connexion à la base de données
 include_once "connect_ddb.php";
 
+// Classe pour la gestion des matières (création, récupération)
 class MatiereManager {
     private $pdo;
 
+    // Constructeur : initialise la connexion PDO
     public function __construct($pdo) {
         $this->pdo = $pdo;
     }
 
+    // Crée une nouvelle matière dans la base de données
     public function createMatiere($name) {
+        // Vérifie si le nom de la matière est fourni
         if (!empty($name)) {
             try {
+                // Prépare et exécute la requête d'insertion
                 $sql = "INSERT INTO matiere (Name) VALUES (:subjectName)";
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute(['subjectName' => htmlspecialchars($name)]);
+                // Enregistre un message de succès dans la session
                 $_SESSION['message'] = "<p class='text-success text-center'>Matière créée avec succès.</p>";
             } catch (PDOException $e) {
+                // Enregistre un message d'erreur dans la session en cas d'exception
                 $_SESSION['message'] = "<p class='text-danger text-center'>Erreur lors de la création de la matière.</p>";
             }
         } else {
+            // Enregistre un message d'erreur si le nom de la matière est vide
             $_SESSION['message'] = "<p class='text-danger text-center'>Le nom de la matière est requis.</p>";
         }
+        // Redirige pour éviter la double soumission du formulaire
         header("Location: adminmatiere.php");
         exit();
     }
 
+    // Récupère toutes les matières de la base de données
     public function getAllMatieres() {
+        // Prépare et exécute la requête de sélection
         $sql = "SELECT id, Name FROM matiere";
         return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 
+// Instancie le gestionnaire de matières
 $matiereManager = new MatiereManager($pdo);
 
+// Si le formulaire de création est soumis, traite la demande
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['createSubject'])) {
     $matiereManager->createMatiere($_POST['subjectName']);
 }
 
+// Récupère la liste des matières pour affichage
 $matieres = $matiereManager->getAllMatieres();
 ?>
 
@@ -57,10 +78,12 @@ $matieres = $matiereManager->getAllMatieres();
 <?php include "barrenav.php"; ?>
 
 <div class="container mt-5">
+    <!-- Affiche un message de succès ou d'erreur -->
     <?= $_SESSION['message'] ?? ""; unset($_SESSION['message']); ?>
 
     <div class="d-flex justify-content-center">
         <div class="form-box p-4 border shadow-lg rounded col-lg-4">
+            <!-- Formulaire de création de matière -->
             <form action="" method="post">
                 <h2 class="text-center mb-3">Créer une Matière</h2>
                 <div class="mb-3">
@@ -76,6 +99,7 @@ $matieres = $matiereManager->getAllMatieres();
 
     <div class="mt-5">
         <h3 class="text-center">Liste des Matières</h3>
+        <!-- Tableau des matières -->
         <table class="table table-striped table-bordered mt-3">
             <thead>
                 <tr>

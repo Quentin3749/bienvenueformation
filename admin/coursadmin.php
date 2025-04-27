@@ -1,4 +1,8 @@
 <?php
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
 header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");

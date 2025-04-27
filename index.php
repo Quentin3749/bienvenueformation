@@ -1,23 +1,22 @@
 <?php
+include_once __DIR__ . '/configuration/connexion_bdd.php';
+include_once __DIR__ . '/utilitaires/session.php';
+// Pas de exiger_authentification() ici car c'est la page de connexion
 
-// On inclut le fichier pour se connecter à la base de données
-include_once "connect_ddb.php";
-
-// On démarre la session pour se souvenir de qui est connecté
-session_start();
-
+// Classe pour gérer l'authentification des utilisateurs
 class Authentification {
-    private $pdo; // On garde l'outil de connexion à la base de données dans notre boîte
+    private $pdo; // Stocke la connexion PDO à la base de données
 
     public function __construct($pdo) {
-        $this->pdo = $pdo; // Quand on crée une boîte Authentification, on lui donne l'outil pour la base de données
+        $this->pdo = $pdo; // Initialise la connexion PDO
     }
 
+    // Fonction pour connecter un utilisateur avec email et mot de passe
     public function connecterUtilisateur($email, $password) {
         // On nettoie l'email pour éviter les soucis
         $email = trim($email);
 
-        // On prépare la requête pour aller chercher l'utilisateur dans la base de données
+        // Prépare la requête pour aller chercher l'utilisateur dans la base de données
         $sql = "SELECT * FROM users WHERE mail = :email";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['email' => $email]);
@@ -34,7 +33,7 @@ class Authentification {
                 $_SESSION['prenom'] = $data['prenom'];
                 $_SESSION['connecte'] = true; // On ajoute une variable pour indiquer que l'utilisateur est connecté
 
-                // On dit où aller en fonction du rôle de l'utilisateur
+                // On redirige l'utilisateur selon son rôle
                 switch ($data['role']) {
                     case 'admin':
                         header('Location: admin/admin.php');
@@ -51,10 +50,12 @@ class Authentification {
                 }
                 exit();
             } else {
-                return "Mot de passe incorrect."; // On renvoie un message d'erreur
+                // Mot de passe incorrect
+                return "Mot de passe incorrect.";
             }
         } else {
-            return "Utilisateur non trouvé."; // On renvoie un autre message d'erreur
+            // Utilisateur non trouvé
+            return "Utilisateur non trouvé.";
         }
     }
 }

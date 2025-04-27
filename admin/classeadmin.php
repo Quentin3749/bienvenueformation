@@ -1,36 +1,43 @@
 <?php
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
+// Désactive le cache HTTP pour garantir l'actualisation des données
 header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
-// Classe de gestion des classes
+// Classe de gestion des classes (ajout, récupération)
 class ClasseManager {
     private $pdo;
 
+    // Constructeur : initialise la connexion PDO
     public function __construct($pdo) {
         $this->pdo = $pdo;
     }
 
+    // Ajoute une nouvelle classe dans la base de données
     public function ajouterClasse($nom) {
         $sql = "INSERT INTO classe (Name) VALUES (:name)";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute(['name' => htmlspecialchars($nom)]);
     }
 
+    // Récupère la liste de toutes les classes
     public function getClasses() {
         $sql = "SELECT id, Name FROM classe";
         return $this->pdo->query($sql)->fetchAll();
     }
 }
 
-// Inclusion de la connexion à la base de données
-include_once "connect_ddb.php";
+// Inclusion de la barre de navigation
 include "barrenav.php";
 
-// Création d'une instance de la classe
+// Création d'une instance du gestionnaire de classes
 $classeManager = new ClasseManager($pdo);
 $message = "";
 
-// Gestion de l'ajout d'une classe
+// Gestion de l'ajout d'une classe via le formulaire
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['createClass'])) {
     if (!empty($_POST['className'])) {
         if ($classeManager->ajouterClasse($_POST['className'])) {
@@ -41,11 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['createClass'])) {
     } else {
         $message = "<p class='text-danger text-center'>Le nom de la classe est requis.</p>";
     }
+    // Redirige pour éviter la double soumission du formulaire
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
 
-// Récupérer les classes
+// Récupère la liste des classes pour affichage
 $classes = $classeManager->getClasses();
 
 ?>
@@ -59,8 +67,10 @@ $classes = $classeManager->getClasses();
     <title>Gestion des Classes</title>
 </head>
 <body>
+<!-- Affichage du message de confirmation ou d'erreur -->
 <div class="container mt-5">
     <?= $message; ?>
+    <!-- Formulaire pour créer une nouvelle classe -->
     <div class="d-flex justify-content-center">
         <div class="form-box p-4 border shadow-lg rounded col-lg-4">
             <form action="" method="post">
@@ -75,6 +85,7 @@ $classes = $classeManager->getClasses();
             </form>
         </div>
     </div>
+    <!-- Affichage de la liste des classes -->
     <div class="mt-5">
         <h3 class="text-center">Liste des Classes</h3>
         <table class="table table-striped table-bordered mt-3">

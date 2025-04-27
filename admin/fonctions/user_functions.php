@@ -1,10 +1,11 @@
 <?php
 /**
  * Vérifie si l'utilisateur actuel est un administrateur
- * 
- * @return bool
+ *
+ * @return bool True si l'utilisateur est admin, sinon false
  */
 function isAdmin() {
+    // Vérifie si la session contient un utilisateur et si son rôle est 'admin'
     if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
         return false;
     }
@@ -12,10 +13,10 @@ function isAdmin() {
 }
 
 /**
- * Redirige l'utilisateur avec un message
- * 
- * @param string $page
- * @param string $message
+ * Redirige l'utilisateur vers une page donnée avec un message optionnel
+ *
+ * @param string $page   La page de destination
+ * @param string $message Message à afficher après redirection
  * @return void
  */
 function redirect($page, $message = '') {
@@ -28,9 +29,9 @@ function redirect($page, $message = '') {
 
 /**
  * Récupère tous les utilisateurs avec leurs informations de classe
- * 
- * @param PDO $pdo
- * @return array
+ *
+ * @param PDO $pdo Instance PDO pour la base de données
+ * @return array Tableau d'utilisateurs avec leur classe
  */
 function getAllUsers($pdo) {
     $sql = "
@@ -46,10 +47,10 @@ function getAllUsers($pdo) {
 }
 
 /**
- * Récupère toutes les classes
- * 
- * @param PDO $pdo
- * @return array
+ * Récupère toutes les classes disponibles
+ *
+ * @param PDO $pdo Instance PDO pour la base de données
+ * @return array Tableau des classes
  */
 function getAllClasses($pdo) {
     $sql = "SELECT id, Name FROM classe ORDER BY Name";
@@ -59,14 +60,13 @@ function getAllClasses($pdo) {
 
 /**
  * Affiche un message d'alerte
- * 
- * @param string $message
- * @param string $type (info, success, warning, danger)
+ *
+ * @param string $message Le message à afficher
+ * @param string $type    Le type d'alerte (success, danger, info, etc.)
  * @return void
  */
 function afficherMessage($message, $type = 'info') {
     if (!empty($message)) {
-        echo '<div class="alert alert-' . $type . ' text-center mt-3 mx-auto w-50">' . 
-             htmlspecialchars($message) . '</div>';
+        echo '<div class="alert alert-' . htmlspecialchars($type) . ' text-center">' . htmlspecialchars($message) . '</div>';
     }
 }

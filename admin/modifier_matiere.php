@@ -1,5 +1,9 @@
 <?php
-session_start();
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
+// session_start(); // Supprimé car déjà géré de façon centralisée
 include_once "connect_ddb.php";
 include "barrenav.php"; // Assurez-vous que ce fichier existe
 

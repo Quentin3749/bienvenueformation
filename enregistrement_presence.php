@@ -1,37 +1,41 @@
 <?php
+include_once __DIR__ . '/configuration/connexion_bdd.php';
+include_once __DIR__ . '/utilitaires/session.php';
+exiger_authentification();
+
+// Active l'affichage des erreurs pour le développement
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-session_start();
-include_once "connect_ddb.php";
-
+// Classe pour gérer l'enregistrement de la présence
 class EnregistrementPresence {
     private $pdo;
 
+    /**
+     * Constructeur de la classe
+     * 
+     * @param PDO $pdo Objet PDO pour la connexion à la base de données
+     */
     public function __construct($pdo) {
         $this->pdo = $pdo;
-        // Activer l'affichage des erreurs PDO (pour le développement)
+        // Active le mode exception pour les erreurs PDO (utile pour le debug)
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->verifierProfesseur();
+        // Traite le formulaire de présence
         $this->processFormulaire();
     }
 
-    private function verifierProfesseur() {
-        if (!isset($_SESSION['email']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'enseignant') {
-            header("Location: login.php");
-            exit();
-        }
-    }
-
+    /**
+     * Traite le formulaire de présence
+     */
     private function processFormulaire() {
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
-            // Affiche le contenu de $_POST (pour le développement)
+            // Affiche le contenu de $_POST pour le debug
             echo "<pre>";
             var_dump($_POST);
             echo "</pre>";
 
-            // Récupérer les données du formulaire
+            // Récupère les données du formulaire
             $classeId = filter_input(INPUT_POST, 'classe_id', FILTER_SANITIZE_NUMBER_INT);
             $courseDate = filter_input(INPUT_POST, 'course_date', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
             $planningId = filter_input(INPUT_POST, 'planning_id', FILTER_SANITIZE_NUMBER_INT);
@@ -39,12 +43,13 @@ class EnregistrementPresence {
             $comment = $_POST['comment'] ?? [];
 
             if ($classeId && $courseDate && $planningId && is_array($presence) && !empty($presence)) {
+                // Enregistre la présence de chaque élève pour le cours
                 $this->enregistrerPresences($planningId, $presence, $comment);
             } else {
                 $_SESSION['error'] = "Données du formulaire incomplètes ou invalides.";
             }
 
-            // Redirection
+            // Redirige vers la page professeur après traitement
             header("Location: prof.php");
             exit();
         } else {
@@ -54,69 +59,41 @@ class EnregistrementPresence {
         }
     }
 
+    /**
+     * Enregistre la présence de chaque élève pour le cours
+     * 
+     * @param int $planningId ID du planning
+     * @param array $presence Tableau des présences
+     * @param array $comment Tableau des commentaires
+     */
     private function enregistrerPresences($planningId, array $presence, array $comment) {
         try {
+            // Démarre une transaction pour les requêtes suivantes
             $this->pdo->beginTransaction();
 
             foreach ($presence as $userId => $statut) {
-                $userId = filter_var($userId, FILTER_SANITIZE_NUMBER_INT);
-                $statut = filter_var($statut, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-                $commentaire = $comment[$userId] ?? ''; // Récupérer le commentaire, vide si non défini
-
-                $existingSignatureId = $this->verifierSignatureExistante($userId, $planningId);
-
-                if ($existingSignatureId) {
-                    $this->mettreAJourPresence($existingSignatureId, $statut, $commentaire);
-                } else {
-                    $this->insererPresence($userId, $planningId, $statut, $commentaire);
-                }
+                // Prépare la requête pour insérer ou mettre à jour la présence
+                $sql = "REPLACE INTO signature (planning_id, user_id, statut_presence, commentaire) VALUES (:planning_id, :user_id, :statut, :commentaire)";
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute([
+                    'planning_id' => $planningId,
+                    'user_id' => $userId,
+                    'statut' => $statut,
+                    'commentaire' => $comment[$userId] ?? ''
+                ]);
             }
 
+            // Valide la transaction
             $this->pdo->commit();
+            // Enregistre un message de succès dans la session
             $_SESSION['message'] = "L'appel a été enregistré avec succès.";
-
         } catch (PDOException $e) {
+            // Annule la transaction en cas d'erreur
             $this->pdo->rollBack();
-            $_SESSION['error'] = "Erreur lors de l'enregistrement : " . $e->getMessage();
-            echo "Erreur PDO : " . $e->getMessage() . "<br>"; // Afficher l'erreur PDO
-        }
-    }
-
-    private function verifierSignatureExistante($userId, $planningId) {
-        $sqlCheck = "SELECT id FROM signature WHERE user_id = :user_id AND planning_id = :planning_id";
-        $stmtCheck = $this->pdo->prepare($sqlCheck);
-        $stmtCheck->execute(['user_id' => $userId, 'planning_id' => $planningId]);
-        $existing = $stmtCheck->fetch();
-        return $existing ? $existing['id'] : null;
-    }
-
-    private function mettreAJourPresence($signatureId, $statut, $commentaire) {
-        $sqlUpdate = "UPDATE signature SET statut_presence = :statut, commentaire = :commentaire WHERE id = :id";
-        $stmtUpdate = $this->pdo->prepare($sqlUpdate);
-        $stmtUpdateResult = $stmtUpdate->execute([
-            'statut' => $statut,
-            'commentaire' => $commentaire,
-            'id' => $signatureId
-        ]);
-        if (!$stmtUpdateResult) {
-            $errorInfo = $stmtUpdate->errorInfo();
-            echo "Erreur lors de la mise à jour : " . $errorInfo[2] . "<br>";
-        }
-    }
-
-    private function insererPresence($userId, $planningId, $statut, $commentaire) {
-        $sqlInsert = "INSERT INTO signature (user_id, planning_id, statut_presence, commentaire)
-                          VALUES (:user_id, :planning_id, :statut, :commentaire)";
-        $stmtInsert = $this->pdo->prepare($sqlInsert);
-        $stmtInsertResult = $stmtInsert->execute([
-            'user_id' => $userId,
-            'planning_id' => $planningId,
-            'statut' => $statut,
-            'commentaire' => $commentaire
-        ]);
-        if (!$stmtInsertResult) {
-            $errorInfo = $stmtInsert->errorInfo();
-            echo "Erreur lors de l'insertion : " . $errorInfo[2] . "<br>";
+            // Enregistre un message d'erreur dans la session
+            $_SESSION['error'] = "Erreur lors de l'enregistrement de la présence : " . $e->getMessage();
+            // Affiche l'erreur PDO pour le debug
+            echo "Erreur PDO : " . $e->getMessage() . "<br>";
         }
     }
 }

@@ -1,10 +1,11 @@
 <?php
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
 // Inclusion des fichiers
 require_once "connect_ddb.php";
 require_once "fonctions/user_functions.php";
-
-// Démarrer la session
-session_start();
 
 // Vérifier si l'utilisateur est connecté et est un administrateur
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {

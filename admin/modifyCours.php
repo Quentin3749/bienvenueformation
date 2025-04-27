@@ -1,4 +1,8 @@
 <?php
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
 require_once 'connect_ddb.php';
 include "barrenav.php";
 

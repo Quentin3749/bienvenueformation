@@ -1,10 +1,15 @@
 <?php
+include_once __DIR__ . '/configuration/connexion_bdd.php';
+include_once __DIR__ . '/utilitaires/session.php';
+exiger_authentification();
+
 // Ce fichier est inclus dans prof.php pour afficher le formulaire d'appel
 // Récupération des élèves de la classe
 $classe_id = $course['classe_id'];
 $planning_id = $course['planning_id'];
 
 // Récupérer les données de signature existantes pour ce cours
+// Cette étape récupère les données de signature existantes pour le cours en cours
 $signature_data = [];
 try {
     $sql_existing_signatures = "
@@ -20,10 +25,12 @@ try {
         ];
     }
 } catch (PDOException $e) {
+    // Affiche un message d'erreur si la récupération échoue
     echo "<div class='alert alert-danger'>Erreur lors de la récupération des signatures existantes: " . $e->getMessage() . "</div>";
 }
 
 // Récupération des élèves de la classe
+// Cette étape récupère la liste des élèves de la classe en cours
 try {
     $sql_students = "
         SELECT IdUsers, Nom, prenom
@@ -36,7 +43,9 @@ try {
     $students = $stmt_students->fetchAll();
 
     if (!empty($students)): ?>
-        <form action="save_attendance.php" method="POST" class="attendance-form">
+        <!-- Formulaire d'appel pour enregistrer la présence des élèves -->
+        <!-- Ce formulaire permet d'enregistrer la présence des élèves pour le cours en cours -->
+        <form action="enregistrement_presence.php" method="POST" class="attendance-form">
             <input type="hidden" name="classe_id" value="<?= htmlspecialchars($classe_id) ?>">
             <input type="hidden" name="course_date" value="<?= htmlspecialchars($course['debut_du_cours']) ?>">
             <input type="hidden" name="planning_id" value="<?= htmlspecialchars($planning_id) ?>">
@@ -60,57 +69,36 @@ try {
                             <th class="text-center">Présent</th>
                             <th class="text-center">Retard</th>
                             <th class="text-center">Absent</th>
-                            <th>Commentaire</th>
+                            <th class="text-center">Commentaire</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($students as $student): 
-                            // Déterminer le statut existant
-                            $existingStatus = isset($signature_data[$student['IdUsers']]) ? $signature_data[$student['IdUsers']]['statut'] : '';
-                            $existingComment = isset($signature_data[$student['IdUsers']]) ? $signature_data[$student['IdUsers']]['commentaire'] : '';
-                            
-                            // Convertir les statuts 'a_confirmer' ou 'validee' en 'present' pour l'affichage
-                            if ($existingStatus === 'a_confirmer' || $existingStatus === 'validee') {
-                                $existingStatus = 'present';
-                            }
+                            // Déterminer le statut existant pour chaque élève
+                            $user_id = $student['IdUsers'];
+                            $statut = $signature_data[$user_id]['statut'] ?? '';
+                            $commentaire = $signature_data[$user_id]['commentaire'] ?? '';
                         ?>
-                            <tr>
-                                <td><?= htmlspecialchars($student['Nom']) ?></td>
-                                <td><?= htmlspecialchars($student['prenom']) ?></td>
-                                <td class="text-center">
-                                    <input type="radio"
-                                           name="presence[<?= $student['IdUsers'] ?>]"
-                                           value="present"
-                                           <?= ($existingStatus === 'present' || $existingStatus === '' ? 'checked' : '') ?>
-                                           class="form-check-input presence-radio">
-                                </td>
-                                <td class="text-center">
-                                    <input type="radio"
-                                           name="presence[<?= $student['IdUsers'] ?>]"
-                                           value="retard"
-                                           <?= ($existingStatus === 'retard' ? 'checked' : '') ?>
-                                           class="form-check-input presence-radio">
-                                </td>
-                                <td class="text-center">
-                                    <input type="radio"
-                                           name="presence[<?= $student['IdUsers'] ?>]"
-                                           value="absent"
-                                           <?= ($existingStatus === 'absent' ? 'checked' : '') ?>
-                                           class="form-check-input presence-radio">
-                                </td>
-                                <td>
-                                    <input type="text"
-                                           name="comment[<?= $student['IdUsers'] ?>]"
-                                           class="form-control form-control-sm"
-                                           value="<?= htmlspecialchars($existingComment) ?>"
-                                           placeholder="Commentaire optionnel">
-                                </td>
-                            </tr>
+                        <tr>
+                            <td><?= htmlspecialchars($student['Nom']) ?></td>
+                            <td><?= htmlspecialchars($student['prenom']) ?></td>
+                            <td class="text-center">
+                                <input type="radio" name="presence[<?= $user_id ?>]" value="present" <?= $statut === 'present' ? 'checked' : '' ?>>
+                            </td>
+                            <td class="text-center">
+                                <input type="radio" name="presence[<?= $user_id ?>]" value="retard" <?= $statut === 'retard' ? 'checked' : '' ?>>
+                            </td>
+                            <td class="text-center">
+                                <input type="radio" name="presence[<?= $user_id ?>]" value="absent" <?= $statut === 'absent' ? 'checked' : '' ?>>
+                            </td>
+                            <td class="text-center">
+                                <input type="text" name="comment[<?= $user_id ?>]" value="<?= htmlspecialchars($commentaire) ?>">
+                            </td>
+                        </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
-            
             <div class="d-flex justify-content-between mt-3">
                 <div>
                     <span class="text-muted">
@@ -118,46 +106,25 @@ try {
                         Les élèves marqués comme présents ou en retard devront confirmer leur présence.
                     </span>
                 </div>
-                <div>
-                    <button type="button" class="btn btn-secondary me-2 close-attendance-form">
-                        <i class="bi bi-x-lg"></i> Annuler
-                    </button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-lg"></i> Enregistrer l'appel
-                    </button>
-                </div>
+                <button type="submit" class="btn btn-primary">Enregistrer l'appel</button>
             </div>
         </form>
 
         <script>
             // Script pour le bouton "Tous présents"
+            // Ce script permet de sélectionner tous les élèves comme présents
             document.getElementById('selectAllPresent-<?= htmlspecialchars($planning_id) ?>').addEventListener('change', function() {
-                const currentForm = this.closest('form');
-                const presentRadios = currentForm.querySelectorAll('input[value="present"]');
-                
-                if (this.checked) {
-                    presentRadios.forEach(radio => {
-                        radio.checked = true;
-                    });
-                }
-            });
-            
-            // Fermer le formulaire quand on clique sur Annuler
-            document.querySelectorAll('.close-attendance-form').forEach(button => {
-                button.addEventListener('click', function() {
-                    const studentRow = this.closest('.student-list');
-                    const toggleButton = document.querySelector(`[data-index="${studentRow.id.replace('students-', '')}"]`);
-                    
-                    // Cacher la ligne et changer le bouton
-                    studentRow.style.display = 'none';
-                    if (toggleButton.textContent.includes('Modifier')) {
-                        toggleButton.innerHTML = '<i class="bi bi-pencil-square"></i> Modifier';
-                    } else {
-                        toggleButton.innerHTML = '<i class="bi bi-clipboard-check"></i> Faire l\'appel';
-                    }
-                    toggleButton.classList.replace('btn-secondary', 'btn-primary');
-                });
+                const radios = document.querySelectorAll('input[type="radio"][value="present"]');
+                radios.forEach(radio => radio.checked = this.checked);
             });
         </script>
     <?php else: ?>
         <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Aucun étudiant trouvé pour cette classe.
+        </div>
+    <?php endif;
+} catch (PDOException $e) {
+    // Affiche un message d'erreur si la récupération des élèves échoue
+    echo "<div class='alert alert-danger'>Erreur lors de la récupération des étudiants : " . $e->getMessage() . "</div>";
+}
+?>

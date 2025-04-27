@@ -1,4 +1,8 @@
 <?php
+include_once __DIR__ . '/../configuration/connexion_bdd.php';
+include_once __DIR__ . '/../utilitaires/session.php';
+exiger_authentification();
+
 header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
@@ -15,7 +19,7 @@ class UserManager {
     // Constructeur declancher automatiquement à chaque creation d'objet
     public function __construct($pdo) {
         $this->pdo = $pdo;
-        session_start();
+        // session_start(); // Supprimé car déjà géré de façon centralisée
     }
 
     // recupere un message
